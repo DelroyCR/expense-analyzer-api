@@ -1,6 +1,8 @@
 using ExpenseAnalyzer.Application.DTOs;
 using ExpenseAnalyzer.Application.Interfaces;
 using ExpenseAnalyzer.Domain.Entities;
+using ExpenseAnalyzer.Application.Common.Exceptions;
+
 
 namespace ExpenseAnalyzer.Application.Services;
 
@@ -23,24 +25,24 @@ public class UserService : IUserService
 
         if (string.IsNullOrWhiteSpace(email))
         {
-            throw new ArgumentException("Email is required.");
+            throw new ValidationException("Email is required.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Password))
         {
-            throw new ArgumentException("Password is required.");
+            throw new ValidationException("Password is required.");
         }
 
         if (request.Password.Length < 8)
         {
-            throw new ArgumentException("Password must be at least 8 characters long.");
+            throw new ValidationException("Password must be at least 8 characters long.");
         }
 
         var emailAlreadyExists = await _userRepository.EmailExistsAsync(email);
 
         if (emailAlreadyExists)
         {
-            throw new InvalidOperationException("A user with this email already exists.");
+            throw new ConflictException("A user with this email already exists.");
         }
 
         var user = new User

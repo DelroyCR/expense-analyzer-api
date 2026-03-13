@@ -3,6 +3,7 @@ using ExpenseAnalyzer.Application.Services;
 using ExpenseAnalyzer.Infrastructure.Persistence;
 using ExpenseAnalyzer.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using ExpenseAnalyzer.Api.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,8 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/openapi/v1.json", "v1");
     });
 }
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 

@@ -5,4 +5,5 @@ namespace ExpenseAnalyzer.Application.Interfaces;
 public interface IUserService{
     Task<RegisterUserResponseDto> RegisterAsync(RegisterUserRequestDto request);
     Task<RegisterUserResponseDto?> GetByIdAsync(Guid id);
+    Task<LoginResponseDto> LoginAsync(LoginRequestDto request);
 }
