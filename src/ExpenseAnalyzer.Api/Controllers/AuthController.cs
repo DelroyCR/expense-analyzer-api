@@ -18,23 +18,12 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<RegisterUserResponseDto>> Register(RegisterUserRequestDto request)
     {
-        try
-        {
-            var result = await _userService.RegisterAsync(request);
+        var result = await _userService.RegisterAsync(request);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = result.Id },
-                result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.Id },
+            result);
     }
 
     [HttpGet("{id:guid}")]
