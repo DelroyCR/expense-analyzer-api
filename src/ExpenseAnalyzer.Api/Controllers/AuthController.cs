@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using ExpenseAnalyzer.Application.DTOs;
 using ExpenseAnalyzer.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseAnalyzer.Api.Controllers;
@@ -24,6 +26,27 @@ public class AuthController : ControllerBase
             nameof(GetById),
             new { id = result.Id },
             result);
+    }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponseDto>> Login(LoginRequestDto request)
+    {
+        var result = await _userService.LoginAsync(request);
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<object> Me()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var email = User.FindFirstValue(ClaimTypes.Email);
+
+        return Ok(new
+        {
+            UserId = userId,
+            Email = email
+        });
     }
 
     [HttpGet("{id:guid}")]
