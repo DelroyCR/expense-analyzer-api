@@ -11,10 +11,14 @@ namespace ExpenseAnalyzer.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AuthController(IUserService userService)
+    public AuthController(
+        IUserService userService,
+        ICurrentUserService currentUserService)
     {
         _userService = userService;
+        _currentUserService = currentUserService;
     }
 
     [HttpPost("register")]
@@ -35,17 +39,15 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize]
     [HttpGet("me")]
-    public ActionResult<object> Me()
+    [Authorize]
+    public IActionResult Me()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var email = User.FindFirstValue(ClaimTypes.Email);
-
         return Ok(new
         {
-            UserId = userId,
-            Email = email
+            UserId = _currentUserService.UserId,
+            Email = _currentUserService.Email,
+            IsAuthenticated = _currentUserService.IsAuthenticated
         });
     }
 
