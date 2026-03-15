@@ -1,14 +1,15 @@
 using ExpenseAnalyzer.Application.Interfaces;
 using ExpenseAnalyzer.Application.Services;
+using ExpenseAnalyzer.Application.Common;
 using ExpenseAnalyzer.Infrastructure.Persistence;
 using ExpenseAnalyzer.Infrastructure.Services;
-using Microsoft.EntityFrameworkCore;
 using ExpenseAnalyzer.Api.Middlewares;
+using ExpenseAnalyzer.Api.OpenApi;
+using ExpenseAnalyzer.Api.Services;
 using System.Text;
-using ExpenseAnalyzer.Application.Common;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using ExpenseAnalyzer.Api.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.OpenApi;
 
@@ -31,6 +32,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
