@@ -1,8 +1,11 @@
 using System.Globalization;
+using CsvHelper;
+using AppValidationException = ExpenseAnalyzer.Application.Common.Exceptions.ValidationException;
 using ExpenseAnalyzer.Application.Common.Exceptions;
 using ExpenseAnalyzer.Application.DTOs;
 using ExpenseAnalyzer.Application.Interfaces;
 using ExpenseAnalyzer.Domain.Entities;
+using ExpenseAnalyzer.Domain.Enums;
 
 namespace ExpenseAnalyzer.Application.Services;
 
@@ -32,14 +35,14 @@ public class ImportService : IImportService
             throw new UnauthorizedException("User is not authenticated.");
         }
 
-        if (fileStream is null || fileStream.Length == 0)
+        if (fileStream is null)
         {
-            throw new ValidationException("A non-empty CSV file is required.");
+            throw new AppValidationException("A non-empty CSV file is required.");
         }
 
         if (!Path.GetExtension(fileName).Equals(".csv", StringComparison.OrdinalIgnoreCase))
         {
-            throw new ValidationException("Only .csv files are allowed.");
+            throw new AppValidationException("Only .csv files are allowed.");
         }
 
         var userId = _currentUserService.UserId.Value;
@@ -50,97 +53,181 @@ public class ImportService : IImportService
             Id = Guid.NewGuid(),
             UserId = userId,
             FileName = fileName,
-            ImportedAtUtc = importedAtUtc
+            ImportedAtUtc = importedAtUtc,
+            TotalRows = 0,
+            ImportedRows = 0,
+            SkippedRows = 0,
+            Status = ImportJobStatus.Pending
         };
-
-        var transactions = new List<Transaction>();
-        var skippedCount = 0;
-
-        using var reader = new StreamReader(fileStream);
-
-        var headerLine = await reader.ReadLineAsync();
-
-        if (string.IsNullOrWhiteSpace(headerLine))
-        {
-            throw new ValidationException("The CSV file is empty or missing a header row.");
-        }
-
-        const string expectedHeader = "Date,Description,Amount";
-
-        if (!headerLine.Equals(expectedHeader, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ValidationException("The CSV header must be exactly: Date,Description,Amount");
-        }
-
-        string? line;
-        while ((line = await reader.ReadLineAsync()) is not null)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                skippedCount++;
-                continue;
-            }
-
-            var columns = line.Split(',');
-
-            if (columns.Length != 3)
-            {
-                skippedCount++;
-                continue;
-            }
-
-            var dateText = columns[0].Trim();
-            var description = columns[1].Trim();
-            var amountText = columns[2].Trim();
-
-            var isDateValid = DateTime.TryParse(
-                dateText,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var parsedDate);
-
-            var isAmountValid = decimal.TryParse(
-                amountText,
-                NumberStyles.Number | NumberStyles.AllowLeadingSign,
-                CultureInfo.InvariantCulture,
-                out var amount);
-
-            if (!isDateValid || string.IsNullOrWhiteSpace(description) || !isAmountValid)
-            {
-                skippedCount++;
-                continue;
-            }
-
-            var date = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
-
-            transactions.Add(new Transaction
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ImportJobId = importJob.Id,
-                Date = date,
-                Description = description,
-                Amount = amount,
-                CreatedAtUtc = importedAtUtc
-            });
-        }
 
         await _importJobRepository.AddAsync(importJob);
-
-        if (transactions.Count > 0)
-        {
-            await _transactionRepository.AddRangeAsync(transactions);
-        }
-
         await _unitOfWork.SaveChangesAsync();
 
-        return new ImportCsvResponseDto
+        var transactions = new List<Transaction>();
+        var errors = new List<ImportCsvRowErrorDto>();
+        var totalRows = 0;
+
+        try
         {
-            ImportJobId = importJob.Id,
-            FileName = importJob.FileName,
-            ImportedCount = transactions.Count,
-            SkippedCount = skippedCount,
-            ImportedAtUtc = importJob.ImportedAtUtc
-        };
+            using var reader = new StreamReader(fileStream);
+            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+
+            csv.Context.RegisterClassMap<ImportCsvRowDtoMap>();
+
+            if (!await csv.ReadAsync())
+            {
+                throw new AppValidationException("The CSV file is empty or missing a header row.");
+            }
+
+            csv.ReadHeader();
+
+            var headerRecord = csv.HeaderRecord;
+
+            if (headerRecord is null)
+            {
+                throw new AppValidationException("The CSV file is empty or missing a header row.");
+            }
+
+            if (headerRecord.Length != 3 ||
+                !string.Equals(headerRecord[0], "Date", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(headerRecord[1], "Description", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(headerRecord[2], "Amount", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new AppValidationException("The CSV header must be exactly: Date,Description,Amount");
+            }
+
+            while (await csv.ReadAsync())
+            {
+                var rowNumber = csv.Context.Parser.Row;
+                var rawLine = csv.Context.Parser.RawRecord?.TrimEnd('\r', '\n') ?? string.Empty;
+
+                totalRows++;
+
+                ImportCsvRowDto row;
+
+                try
+                {
+                    row = csv.GetRecord<ImportCsvRowDto>();
+                }
+                catch
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "The row could not be parsed."
+                    });
+
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(rawLine))
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "The row is empty."
+                    });
+
+                    continue;
+                }
+
+                var dateText = row.Date?.Trim() ?? string.Empty;
+                var description = row.Description?.Trim() ?? string.Empty;
+                var amountText = row.Amount?.Trim() ?? string.Empty;
+
+                var isDateValid = DateTime.TryParse(
+                    dateText,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var parsedDate);
+
+                if (!isDateValid)
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "Date is invalid."
+                    });
+
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(description))
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "Description is required."
+                    });
+
+                    continue;
+                }
+
+                var isAmountValid = decimal.TryParse(
+                    amountText,
+                    NumberStyles.Number | NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture,
+                    out var amount);
+
+                if (!isAmountValid)
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "Amount is invalid."
+                    });
+
+                    continue;
+                }
+
+                var date = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
+
+                transactions.Add(new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    ImportJobId = importJob.Id,
+                    Date = date,
+                    Description = description,
+                    Amount = amount,
+                    CreatedAtUtc = importedAtUtc
+                });
+            }
+
+            if (transactions.Count > 0)
+            {
+                await _transactionRepository.AddRangeAsync(transactions);
+            }
+
+            importJob.TotalRows = totalRows;
+            importJob.ImportedRows = transactions.Count;
+            importJob.SkippedRows = errors.Count;
+            importJob.Status = errors.Count == 0
+                ? ImportJobStatus.Completed
+                : ImportJobStatus.CompletedWithErrors;
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return new ImportCsvResponseDto
+            {
+                ImportJobId = importJob.Id,
+                FileName = importJob.FileName,
+                ImportedCount = transactions.Count,
+                SkippedCount = errors.Count,
+                ImportedAtUtc = importJob.ImportedAtUtc,
+                Errors = errors
+            };
+        }
+        catch
+        {
+            importJob.Status = ImportJobStatus.Failed;
+            await _unitOfWork.SaveChangesAsync();
+            throw;
+        }
     }
 }

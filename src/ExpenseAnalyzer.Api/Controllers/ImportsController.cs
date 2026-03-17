@@ -23,7 +23,7 @@ public class ImportsController : ControllerBase
     [ProducesResponseType(typeof(ImportCsvResponseDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ImportCsvResponseDto>> ImportCsv([FromForm] ImportCsvRequest request)
     {
-        if (request.File is null)
+        if (request.File is null || request.File.Length == 0)
         {
             return BadRequest("A CSV file is required.");
         }

@@ -7,4 +7,5 @@ public class ImportCsvResponseDto
     public int ImportedCount { get; set; }
     public int SkippedCount { get; set; }
     public DateTime ImportedAtUtc { get; set; }
+    public IReadOnlyList<ImportCsvRowErrorDto> Errors { get; init; } = [];
 }
