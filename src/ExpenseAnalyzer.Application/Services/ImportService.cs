@@ -230,4 +230,59 @@ public class ImportService : IImportService
             throw;
         }
     }
+
+    public async Task<IReadOnlyList<ImportJobSummaryDto>> GetImportHistoryAsync()
+    {
+        if (!_currentUserService.IsAuthenticated || _currentUserService.UserId is null)
+        {
+            throw new UnauthorizedException("User is not authenticated.");
+        }
+
+        var userId = _currentUserService.UserId.Value;
+
+        var importJobs = await _importJobRepository.GetByUserIdAsync(userId);
+
+        var result = importJobs
+            .Select(x => new ImportJobSummaryDto
+            {
+                ImportJobId = x.Id,
+                FileName = x.FileName,
+                TotalRows = x.TotalRows,
+                ImportedRows = x.ImportedRows,
+                SkippedRows = x.SkippedRows,
+                Status = x.Status.ToString(),
+                ImportedAtUtc = x.ImportedAtUtc
+            })
+            .ToList();
+
+        return result;
+    }
+
+    public async Task<ImportJobDetailDto> GetImportByIdAsync(Guid importJobId)
+    {
+        var userId = _currentUserService.UserId;
+
+        if (!userId.HasValue)
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+
+        var importJob = await _importJobRepository.GetByIdAsync(importJobId, userId.Value);
+
+        if (importJob is null)
+        {
+            throw new KeyNotFoundException("Import job not found.");
+        }
+
+        return new ImportJobDetailDto
+        {
+            ImportJobId = importJob.Id,
+            FileName = importJob.FileName,
+            TotalRows = importJob.TotalRows,
+            ImportedRows = importJob.ImportedRows,
+            SkippedRows = importJob.SkippedRows,
+            Status = importJob.Status.ToString(),
+            ImportedAtUtc = importJob.ImportedAtUtc
+        };
+    }
 }

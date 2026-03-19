@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using ExpenseAnalyzer.Api.Common;
 using ExpenseAnalyzer.Application.Common.Exceptions;
@@ -33,28 +34,35 @@ public class ExceptionHandlingMiddleware
         switch (exception)
         {
             case ValidationException:
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            response.StatusCode = StatusCodes.Status400BadRequest;
-            response.Message = exception.Message;
-            break;
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                response.StatusCode = StatusCodes.Status400BadRequest;
+                response.Message = exception.Message;
+                break;
 
             case ConflictException:
-            context.Response.StatusCode = StatusCodes.Status409Conflict;
-            response.StatusCode = StatusCodes.Status409Conflict;
-            response.Message = exception.Message;
-            break;
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
+                response.StatusCode = StatusCodes.Status409Conflict;
+                response.Message = exception.Message;
+                break;
 
             case UnauthorizedException:
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            response.StatusCode = StatusCodes.Status401Unauthorized;
-            response.Message = exception.Message;
-            break;
+            case UnauthorizedAccessException:
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                response.StatusCode = StatusCodes.Status401Unauthorized;
+                response.Message = exception.Message;
+                break;
+
+            case KeyNotFoundException:
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                response.StatusCode = StatusCodes.Status404NotFound;
+                response.Message = exception.Message;
+                break;
 
             default:
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            response.StatusCode = StatusCodes.Status500InternalServerError;
-            response.Message = "An unexpected eroor ocurred.";
-            break;
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                response.StatusCode = StatusCodes.Status500InternalServerError;
+                response.Message = "An unexpected error occurred.";
+                break;
         }
 
         var json = JsonSerializer.Serialize(response);

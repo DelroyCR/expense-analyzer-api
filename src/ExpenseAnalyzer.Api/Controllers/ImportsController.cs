@@ -33,4 +33,19 @@ public class ImportsController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<ImportJobSummaryDto>>> GetHistory()
+    {
+        var result = await _importService.GetImportHistoryAsync();
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ImportJobDetailDto>> GetImportById(Guid id)
+    {
+        var result = await _importService.GetImportByIdAsync(id);
+        return Ok(result);
+    }
 }
