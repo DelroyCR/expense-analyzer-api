@@ -1,3 +1,5 @@
+namespace ExpenseAnalyzer.Application.DTOs;
+
 public sealed class ImportJobDetailDto
 {
     public Guid ImportJobId { get; set; }
@@ -7,4 +9,7 @@ public sealed class ImportJobDetailDto
     public int SkippedRows { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime ImportedAtUtc { get; set; }
+
+    public IReadOnlyList<ImportJobTransactionDto> Transactions { get; set; }
+        = new List<ImportJobTransactionDto>();
 }

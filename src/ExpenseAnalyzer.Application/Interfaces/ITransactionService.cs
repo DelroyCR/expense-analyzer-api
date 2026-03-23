@@ -4,7 +4,7 @@ namespace ExpenseAnalyzer.Application.Interfaces;
 
 public interface ITransactionService
 {
-    Task<IReadOnlyList<TransactionSummaryDto>> GetTransactionsAsync(TransactionFilterDto filter);
+    Task<PagedResultDto<TransactionSummaryDto>> GetTransactionsAsync(TransactionFilterDto filter);
     Task<TransactionDetailDto> GetTransactionByIdAsync(Guid transactionId);
     Task<TransactionSummaryStatsDto> GetTransactionSummaryAsync(TransactionFilterDto filter);
 }

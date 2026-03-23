@@ -274,6 +274,8 @@ public class ImportService : IImportService
             throw new KeyNotFoundException("Import job not found.");
         }
 
+        var transactions = await _transactionRepository.GetByImportJobIdAsync(importJobId, userId.Value);
+
         return new ImportJobDetailDto
         {
             ImportJobId = importJob.Id,
@@ -282,7 +284,17 @@ public class ImportService : IImportService
             ImportedRows = importJob.ImportedRows,
             SkippedRows = importJob.SkippedRows,
             Status = importJob.Status.ToString(),
-            ImportedAtUtc = importJob.ImportedAtUtc
+            ImportedAtUtc = importJob.ImportedAtUtc,
+            Transactions = transactions 
+                .Select(x => new ImportJobTransactionDto
+                {
+                    TransactionId = x.Id,
+                    Date = x.Date,
+                    Description = x.Description,
+                    Amount = x.Amount,
+                    CreatedAtUtc = x.CreatedAtUtc
+                })
+                .ToList()
         };
     }
 }

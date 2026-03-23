@@ -18,7 +18,7 @@ public class TransactionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TransactionSummaryDto>>> GetTransactions([FromQuery] TransactionFilterDto filter)
+    public async Task<ActionResult<PagedResultDto<TransactionSummaryDto>>> GetTransactions([FromQuery] TransactionFilterDto filter)
     {
         var result = await _transactionService.GetTransactionsAsync(filter);
         return Ok(result);
