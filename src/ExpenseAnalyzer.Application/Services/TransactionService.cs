@@ -19,52 +19,53 @@ public class TransactionService : ITransactionService
     }
 
  public async Task<PagedResultDto<TransactionSummaryDto>> GetTransactionsAsync(TransactionFilterDto filter)
-{
-    var userId = _currentUserService.UserId;
-
-    if (!userId.HasValue)
     {
-        throw new UnauthorizedAccessException("User is not authenticated.");
-    }
+        var userId = _currentUserService.UserId;
 
-    ValidateTransactionFilter(filter);
-    ValidatePagination(filter);
-
-    var (transactions, totalCount) =
-        await _transactionRepository.GetPagedByUserIdAsync(userId.Value, filter);
-
-    var items = transactions
-        .Select(x => new TransactionSummaryDto
+        if (!userId.HasValue)
         {
-            TransactionId = x.Id,
-            ImportJobId = x.ImportJobId,
-            Date = x.Date,
-            Description = x.Description,
-            Amount = x.Amount,
-            CreatedAtUtc = x.CreatedAtUtc
-        })
-        .ToList();
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
 
-    var result = new PagedResultDto<TransactionSummaryDto>
-    {
-        Items = items,
-        TotalCount = totalCount,
-        PageNumber = filter.PageNumber,
-        PageSize = filter.PageSize
-    };
+        ValidateTransactionFilter(filter);
+        ValidatePagination(filter);
+        ValidateSorting(filter);
 
-    if (result.TotalCount == 0)
-    {
-        result.Message = "No transactions were found for the provided filters.";
+        var (transactions, totalCount) =
+            await _transactionRepository.GetPagedByUserIdAsync(userId.Value, filter);
+
+        var items = transactions
+            .Select(x => new TransactionSummaryDto
+            {
+                TransactionId = x.Id,
+                ImportJobId = x.ImportJobId,
+                Date = x.Date,
+                Description = x.Description,
+                Amount = x.Amount,
+                CreatedAtUtc = x.CreatedAtUtc
+            })
+            .ToList();
+
+        var result = new PagedResultDto<TransactionSummaryDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = filter.PageNumber,
+            PageSize = filter.PageSize
+        };
+
+        if (result.TotalCount == 0)
+        {
+            result.Message = "No transactions were found for the provided filters.";
+        }
+        else if (result.PageNumber > result.TotalPages)
+        {
+            result.IsPageOutOfRange = true;
+            result.Message = $"There are no records on page {result.PageNumber}. With the current filters, only {result.TotalPages} page(s) exist.";
+        }
+
+        return result;
     }
-    else if (result.PageNumber > result.TotalPages)
-    {
-        result.IsPageOutOfRange = true;
-        result.Message = $"There are no records on page {result.PageNumber}. With the current filters, only {result.TotalPages} page(s) exist.";
-    }
-
-    return result;
-}
 
     public async Task<TransactionDetailDto> GetTransactionByIdAsync(Guid transactionId)
     {
@@ -101,8 +102,6 @@ public class TransactionService : ITransactionService
         {
             throw new UnauthorizedAccessException("User is not authenticated.");
         }
-
-        ValidateTransactionFilter(filter);
 
         var transactions = await _transactionRepository.GetByUserIdAsync(userId.Value, filter);
 
@@ -169,4 +168,24 @@ public class TransactionService : ITransactionService
             throw new ValidationException("The page size cannot be greater than 100.");
         }
     }
+
+    private static void ValidateSorting(TransactionFilterDto filter)
+    {
+        var allowedSortBy = new[] { "date", "amount" };
+        var allowedSortDirection = new[] { "asc", "desc" };
+
+        var sortBy = (filter.SortBy ?? "date").Trim().ToLower();
+        var sortDirection = (filter.SortDirection ?? "desc").Trim().ToLower();
+
+        if (!allowedSortBy.Contains(sortBy))
+        {
+            throw new ValidationException("SortBy must be either 'date' or 'amount'.");
+        }
+
+        if (!allowedSortDirection.Contains(sortDirection))
+        {
+            throw new ValidationException("SortDirection must be either 'asc' or 'desc'.");
+        }
+    }
+
 }
