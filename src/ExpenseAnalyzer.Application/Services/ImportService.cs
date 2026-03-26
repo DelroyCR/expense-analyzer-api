@@ -104,22 +104,17 @@ public class ImportService : IImportService
 
             while (await csv.ReadAsync())
             {
-                var rowNumber = csv.Context.Parser.Row;
-                var rawLine = csv.Context.Parser.RawRecord?.TrimEnd('\r', '\n') ?? string.Empty;
+                var parser = csv.Context.Parser;
+
+                if (parser is null)
+                {
+                    throw new AppValidationException("The CSV parser could not read the current row.");
+                }
+
+                var rowNumber = parser.Row;
+                var rawLine = parser.RawRecord?.TrimEnd('\r', '\n') ?? string.Empty;
 
                 totalRows++;
-
-                if (string.IsNullOrWhiteSpace(rawLine))
-                {
-                    errors.Add(new ImportCsvRowErrorDto
-                    {
-                        RowNumber = rowNumber,
-                        RawLine = rawLine,
-                        Message = "The row is empty."
-                    });
-
-                    continue;
-                }
 
                 ImportCsvRowDto? row;
 
@@ -146,6 +141,18 @@ public class ImportService : IImportService
                         RowNumber = rowNumber,
                         RawLine = rawLine,
                         Message = "The row could not be parsed."
+                    });
+
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(rawLine))
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "The row is empty."
                     });
 
                     continue;
