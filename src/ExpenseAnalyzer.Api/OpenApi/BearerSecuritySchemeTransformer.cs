@@ -15,7 +15,10 @@ internal sealed class BearerSecuritySchemeTransformer(
     {
         var authenticationSchemes = await authenticationSchemeProvider.GetAllSchemesAsync();
 
-        if (!authenticationSchemes.Any(authScheme => authScheme.Name == "Bearer"))
+        var hasBearerScheme = authenticationSchemes.Any(authScheme =>
+            string.Equals(authScheme.Name, "Bearer", StringComparison.Ordinal));
+
+        if (!hasBearerScheme)
         {
             return;
         }
@@ -33,16 +36,29 @@ internal sealed class BearerSecuritySchemeTransformer(
             }
         };
 
-        foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations))
+        if (document.Paths is null)
         {
-            operation.Value.Security ??= new List<OpenApiSecurityRequirement>();
+            return;
+        }
 
-            operation.Value.Security.Add(new OpenApiSecurityRequirement
+        foreach (var pathItem in document.Paths.Values)
+        {
+            if (pathItem?.Operations is null)
             {
-                [
-                    new OpenApiSecuritySchemeReference("Bearer", document)
-                ] = new List<string>()
-            });
+                continue;
+            }
+
+            foreach (var operation in pathItem.Operations.Values)
+            {
+                operation.Security ??= new List<OpenApiSecurityRequirement>();
+
+                operation.Security.Add(new OpenApiSecurityRequirement
+                {
+                    [
+                        new OpenApiSecuritySchemeReference("Bearer", document)
+                    ] = new List<string>()
+                });
+            }
         }
     }
 }

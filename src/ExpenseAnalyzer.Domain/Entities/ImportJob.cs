@@ -5,7 +5,6 @@ namespace ExpenseAnalyzer.Domain.Entities;
 
 public class ImportJob : BaseEntity
 {
-    public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string FileName { get; set; } = string.Empty;
     public DateTime ImportedAtUtc { get; set; }

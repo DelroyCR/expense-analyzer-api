@@ -40,6 +40,11 @@ public class ImportService : IImportService
             throw new AppValidationException("A non-empty CSV file is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            throw new AppValidationException("A valid file name is required.");
+        }
+
         if (!Path.GetExtension(fileName).Equals(".csv", StringComparison.OrdinalIgnoreCase))
         {
             throw new AppValidationException("Only .csv files are allowed.");
@@ -57,7 +62,8 @@ public class ImportService : IImportService
             TotalRows = 0,
             ImportedRows = 0,
             SkippedRows = 0,
-            Status = ImportJobStatus.Pending
+            Status = ImportJobStatus.Pending,
+            CreatedAtUtc = importedAtUtc
         };
 
         await _importJobRepository.AddAsync(importJob);
@@ -103,7 +109,19 @@ public class ImportService : IImportService
 
                 totalRows++;
 
-                ImportCsvRowDto row;
+                if (string.IsNullOrWhiteSpace(rawLine))
+                {
+                    errors.Add(new ImportCsvRowErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        RawLine = rawLine,
+                        Message = "The row is empty."
+                    });
+
+                    continue;
+                }
+
+                ImportCsvRowDto? row;
 
                 try
                 {
@@ -121,13 +139,13 @@ public class ImportService : IImportService
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(rawLine))
+                if (row is null)
                 {
                     errors.Add(new ImportCsvRowErrorDto
                     {
                         RowNumber = rowNumber,
                         RawLine = rawLine,
-                        Message = "The row is empty."
+                        Message = "The row could not be parsed."
                     });
 
                     continue;
@@ -285,7 +303,7 @@ public class ImportService : IImportService
             SkippedRows = importJob.SkippedRows,
             Status = importJob.Status.ToString(),
             ImportedAtUtc = importJob.ImportedAtUtc,
-            Transactions = transactions 
+            Transactions = transactions
                 .Select(x => new ImportJobTransactionDto
                 {
                     TransactionId = x.Id,

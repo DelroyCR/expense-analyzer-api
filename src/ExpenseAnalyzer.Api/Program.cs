@@ -1,32 +1,43 @@
-using ExpenseAnalyzer.Application.Interfaces;
-using ExpenseAnalyzer.Application.Services;
-using ExpenseAnalyzer.Application.Common;
-using ExpenseAnalyzer.Infrastructure.Persistence;
-using ExpenseAnalyzer.Infrastructure.Services;
+using System.Text;
 using ExpenseAnalyzer.Api.Middlewares;
 using ExpenseAnalyzer.Api.OpenApi;
 using ExpenseAnalyzer.Api.Services;
-using System.Text;
-using Microsoft.EntityFrameworkCore;
+using ExpenseAnalyzer.Application.Common;
+using ExpenseAnalyzer.Application.Interfaces;
+using ExpenseAnalyzer.Application.Services;
+using ExpenseAnalyzer.Infrastructure.Persistence;
+using ExpenseAnalyzer.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
 builder.Services.AddOpenApi(options =>
-    {
+{
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
-    });
-builder.Services.AddDbContext<ExpenseAnalyzerDbContext>(options => 
+});
+
+builder.Services.AddDbContext<ExpenseAnalyzerDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("JwtSettings"));
 
 var jwtSettings = builder.Configuration
     .GetSection("JwtSettings")
-    .Get<JwtSettings>()!;
+    .Get<JwtSettings>();
+
+if (jwtSettings is null ||
+    string.IsNullOrWhiteSpace(jwtSettings.Key) ||
+    string.IsNullOrWhiteSpace(jwtSettings.Issuer) ||
+    string.IsNullOrWhiteSpace(jwtSettings.Audience))
+{
+    throw new InvalidOperationException(
+        "JwtSettings configuration is missing or invalid.");
+}
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -58,8 +69,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtSettings.Key))
-    };
-});
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -68,6 +79,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/openapi/v1.json", "v1");
@@ -76,15 +88,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// app.UseHttpsRedirection();
-
-if (!app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment() &&
+    !app.Environment.IsEnvironment("IntegrationTesting"))
 {
     app.UseHttpsRedirection();
 }
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();
