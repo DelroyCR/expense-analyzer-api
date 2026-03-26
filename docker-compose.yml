@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: expense-analyzer-api
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=expense_analyzer;Username=postgres;Password=postgres
+
+      JwtSettings__Key: ThisIsOnlyForLocalDockerDevelopment_ChangeMe123456789
+      JwtSettings__Issuer: ExpenseAnalyzerApi
+      JwtSettings__Audience: ExpenseAnalyzerApiUsers
+      JwtSettings__ExpirationMinutes: 60
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:17
+    container_name: expense-analyzer-postgres
+    environment:
+      POSTGRES_DB: expense_analyzer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - expense_analyzer_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  expense_analyzer_postgres_data:
