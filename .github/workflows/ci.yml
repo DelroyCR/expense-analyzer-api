@@ -51,5 +51,14 @@ jobs:
       - name: Run unit tests
         run: dotnet test tests/ExpenseAnalyzer.UnitTests/ExpenseAnalyzer.UnitTests.csproj --no-build --configuration Release --logger "console;verbosity=detailed"
 
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 10.*
+
+      - name: Add .NET tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Apply test database migrations
+        run: dotnet ef database update --project src/ExpenseAnalyzer.Infrastructure/ExpenseAnalyzer.Infrastructure.csproj --startup-project src/ExpenseAnalyzer.Api/ExpenseAnalyzer.Api.csproj
+
       - name: Run integration tests
         run: dotnet test tests/ExpenseAnalyzer.IntegrationTests/ExpenseAnalyzer.IntegrationTests.csproj --no-build --configuration Release --logger "console;verbosity=detailed"
