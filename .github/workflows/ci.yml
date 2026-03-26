@@ -10,6 +10,29 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: expense_analyzer_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d expense_analyzer_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      ASPNETCORE_ENVIRONMENT: IntegrationTesting
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=expense_analyzer_test;Username=postgres;Password=postgres
+      JwtSettings__Key: TestKeyForGithubActions_12345678901234567890
+      JwtSettings__Issuer: ExpenseAnalyzerApi
+      JwtSettings__Audience: ExpenseAnalyzerApiUsers
+      JwtSettings__ExpirationMinutes: 60
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,5 +48,5 @@ jobs:
       - name: Build solution
         run: dotnet build --no-restore --configuration Release
 
-      - name: Run tests
-        run: dotnet test --no-build --configuration Release
+      - name: Run unit tests
+        run: dotnet test tests/ExpenseAnalyzer.UnitTests/ExpenseAnalyzer.UnitTests.csproj --no-build --configuration Release
