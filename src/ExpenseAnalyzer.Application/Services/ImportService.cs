@@ -99,7 +99,7 @@ public class ImportService : IImportService
                 !string.Equals(headerRecord[1], "Description", StringComparison.OrdinalIgnoreCase) ||
                 !string.Equals(headerRecord[2], "Amount", StringComparison.OrdinalIgnoreCase))
             {
-                throw new AppValidationException("The CSV header must be exactly: Date,Description,Amount");
+                throw new AppValidationException("The CSV header must be exactly: Date,Description,Amount.");
             }
 
             while (await csv.ReadAsync())
