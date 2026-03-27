@@ -10,6 +10,7 @@ using ExpenseAnalyzer.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +75,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 var applyMigrationsOnStartup =
@@ -85,6 +95,8 @@ if (applyMigrationsOnStartup)
     var dbContext = scope.ServiceProvider.GetRequiredService<ExpenseAnalyzerDbContext>();
     dbContext.Database.Migrate();
 }
+
+app.UseForwardedHeaders();
 
 app.MapOpenApi();
 
