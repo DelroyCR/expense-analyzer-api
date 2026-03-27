@@ -86,7 +86,9 @@ if (applyMigrationsOnStartup)
     dbContext.Database.Migrate();
 }
 
-if (app.Environment.IsDevelopment())
+var enableSwagger = builder.Configuration.GetValue<bool>("EnableSwagger");
+
+if (app.Environment.IsDevelopment() || enableSwagger)
 {
     app.MapOpenApi();
 
@@ -117,3 +119,4 @@ app.Run();
 public partial class Program
 {
 }
+
