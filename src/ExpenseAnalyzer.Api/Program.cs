@@ -76,6 +76,16 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+var applyMigrationsOnStartup =
+    builder.Configuration.GetValue<bool>("ApplyMigrationsOnStartup");
+
+if (applyMigrationsOnStartup)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ExpenseAnalyzerDbContext>();
+    dbContext.Database.Migrate();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -98,6 +108,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }))
+    .ExcludeFromDescription();
 
 app.Run();
 
