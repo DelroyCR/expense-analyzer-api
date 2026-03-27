@@ -86,17 +86,12 @@ if (applyMigrationsOnStartup)
     dbContext.Database.Migrate();
 }
 
-var enableSwagger = builder.Configuration.GetValue<bool>("EnableSwagger");
+app.MapOpenApi();
 
-if (app.Environment.IsDevelopment() || enableSwagger)
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/openapi/v1.json", "v1");
-    });
-}
+    options.SwaggerEndpoint("/openapi/v1.json", "v1");
+});
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
