@@ -7,3 +7,4 @@ TestResults/
 *.db
 *.sqlite
 .env
+src/ExpenseAnalyzer.Api/appsettings.Development.json
