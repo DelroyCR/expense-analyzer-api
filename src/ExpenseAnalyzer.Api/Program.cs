@@ -27,6 +27,17 @@ builder.Services.AddDbContext<ExpenseAnalyzerDbContext>(options =>
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularClient", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var jwtSettings = builder.Configuration
     .GetSection("JwtSettings")
     .Get<JwtSettings>();
@@ -112,6 +123,8 @@ if (!app.Environment.IsDevelopment() &&
 {
     app.UseHttpsRedirection();
 }
+
+app.UseCors("AngularClient");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -4,6 +4,8 @@ A ASP.NET Core Web API for importing, validating, storing, and querying personal
 
 This project was built using layered architecture, JWT authentication, ownership enforcement, CSV import with partial success, PostgreSQL persistence, automated testing, Dockerized local setup, CI/CD, and cloud deployment.
 
+Expense Analyzer V1 also includes a separate Angular frontend client that consumes this ASP.NET Core Web API.
+
 ## Live Demo
 
 - **API Base URL:** `https://expense-analyzer-api.onrender.com`
@@ -131,6 +133,125 @@ tests/
   ExpenseAnalyzer.UnitTests/
   ExpenseAnalyzer.IntegrationTests/
 ```
+
+## Angular Frontend Client
+
+Expense Analyzer V1 also includes a separate Angular frontend client that consumes this ASP.NET Core Web API. The frontend is implemented as an independent Angular project and communicates with this backend through HTTP requests.
+
+```
+Angular Client        ASP.NET Core API        Database
+localhost:4200  --->  localhost:5268  --->   PostgreSQL
+```
+
+### Frontend Repository
+
+```
+https://github.com/DelroyCR/expense-analyzer-angular-client
+```
+
+### Frontend Features
+
+The Angular client includes:
+
+* User registration
+* User login
+* JWT-based authentication
+* Protected routes with Angular route guards
+* HTTP interceptor for authenticated API requests
+* Dashboard page
+* Transaction list page
+* Transaction filtering by date range, amount, description, and import job
+* Transaction sorting by date or amount
+* Pagination
+* CSV file upload
+* Frontend validation for invalid filters and CSV uploads
+* Session expiration handling
+* Basic navigation between dashboard, transactions, and CSV import pages
+
+### Authentication Flow
+
+1. The user registers or logs in from the Angular client.
+2. The backend validates the credentials.
+3. The backend returns a JWT.
+4. The Angular client stores the JWT locally.
+5. Angular sends the token in protected requests using:
+
+```
+Authorization: Bearer <token>
+```
+
+6. The ASP.NET Core backend validates the JWT before allowing access to protected endpoints.
+
+### Local Development
+
+To run the full-stack project locally:
+
+1. Start the ASP.NET Core backend:
+
+```
+http://localhost:5268
+```
+
+2. Start the Angular frontend:
+
+```
+ng.cmd serve -o
+```
+
+3. Open the Angular app:
+
+```
+http://localhost:4200
+```
+
+The Angular client expects the API base URL to be:
+
+```ts
+export const API_BASE_URL = 'http://localhost:5268';
+```
+
+### CORS
+
+Because the frontend and backend run on different local origins, the backend must allow requests from:
+
+```
+http://localhost:4200
+```
+
+Example CORS policy:
+
+```csharp
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularClient", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+```
+
+And in the middleware pipeline:
+
+```csharp
+app.UseCors("AngularClient");
+```
+
+### Full-Stack Scope
+
+With the Angular client, Expense Analyzer V1 demonstrates a complete full-stack workflow:
+
+* ASP.NET Core Web API backend
+* Angular frontend
+* JWT authentication
+* Protected API endpoints
+* PostgreSQL persistence
+* CSV import
+* Filtering, sorting, and pagination
+* Frontend and backend validation
+
 
 ## Core Business Rules
 
